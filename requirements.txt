@@ -1,0 +1,6 @@
+tqdm 
+matplotlib 
+fastapi
+uvicorn
+python-multipart
+opencv-python
