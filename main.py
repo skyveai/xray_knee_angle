@@ -45,7 +45,7 @@ app = FastAPI(lifespan=lifespan)
 
 
 # Define allowed extensions
-ALLOWED_EXTENSIONS = {"jpg", "jpeg", "bmp"}
+ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "bmp"}
 
 @app.post("/upload-image/")
 async def upload_picture(file: UploadFile = File(...)):
