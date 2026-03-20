@@ -104,8 +104,8 @@ def process(image, ml_models):
     kp_kps[:, 0] *= 512 / 128
     kp_kps[:, 1] *= 512 / 128
 
-    kp_kps[:, 0] *= k_cimg.shape[0] / 512
-    kp_kps[:, 1] *= k_cimg.shape[1] / 512
+    kp_kps[:, 0] *= k_cimg.shape[1] / 512
+    kp_kps[:, 1] *= k_cimg.shape[0] / 512
     kp_kps += k_shift
 
     # ANKLE
@@ -127,7 +127,7 @@ def process(image, ml_models):
     ap_kp[0] *= 256 / 64
     ap_kp[1] *= 256 / 64
 
-    ap_kp[0] *= a_cimg.shape[0] / 256
+    ap_kp[0] *= a_cimg.shape[1] / 256
     ap_kp[1] *= a_cimg.shape[0] / 256
     ap_kp += a_shift
     
