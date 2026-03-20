@@ -5,30 +5,23 @@ from utils import softargmax_2d, calc_angle, calc_signed_angle
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-def apply_crop(image, center, crop_size):
-
-    H, W = image.shape
-
-    if H > 5500:
-        crop_size = (crop_size[0] * 2, crop_size[1] * 2)    
+def crop_image(image, point, crop_percent):
+    h, w = image.shape[:2]
+    x, y = point  # Unpack the coordinates from the point tuple
     
-    half = (crop_size[0] // 2, crop_size[1] // 2)
+    # Calculate the side length based on a percentage of the shortest dimension
+    side = int(min(w, h) * crop_percent)
+    half = side // 2
 
-    x_center, y_center = center
+    # Determine crop boundaries (Clamped to stay inside image frames)
+    # This logic ensures the square stays 'side' length even near edges
+    left = int(max(0, min(x - half, w - side)))
+    top = int(max(0, min(y - half, h - side)))
 
-    # Ensure coordinates stay within bounds
-    x_center = np.clip(x_center, half[1], W - half[1])
-    y_center = np.clip(y_center, half[0], H - half[0])
-
-    # Bounding box coordinates
-    x1 =int(max(0, x_center - half[1]))
-    y1 = int(max(0, y_center - half[0]))
-    x2 = int(min(W, x_center + half[1]))
-    y2 = int(min(H, y_center + half[0]))
+    # Perform the crop using NumPy slicing
+    cropped = image[top:top+side, left:left+side]
     
-    cropped_image = image[y1:y2, x1:x2]
-    
-    return cropped_image, (x1, y1)
+    return cropped, np.array([left, top])
 
 def process(image, ml_models):
 
@@ -66,9 +59,9 @@ def process(image, ml_models):
     a_cc[0] *= W/256
     a_cc[1] *= H/512
 
-    h_cimg, h_shift = apply_crop(image, h_cc, crop_size=(384, 384))
-    k_cimg, k_shift = apply_crop(image, k_cc, crop_size=(512, 512))
-    a_cimg, a_shift = apply_crop(image, a_cc, crop_size=(256, 256))
+    h_cimg, h_shift = crop_image(image, h_cc, crop_percent=0.3)
+    k_cimg, k_shift = crop_image(image, k_cc, crop_percent=0.3)
+    a_cimg, a_shift = crop_image(image, a_cc, crop_percent=0.3)
 
     # HIP
     h_img = cv2.resize(h_cimg, (384, 384))
@@ -85,8 +78,11 @@ def process(image, ml_models):
     
     hp_kp = softargmax_2d(hp_hmp, beta=100.0)
     hp_kp = hp_kp.squeeze().cpu().numpy()
-    hp_kp[0] /= 96 / h_cimg.shape[1]
-    hp_kp[1] /= 96 / h_cimg.shape[0]
+    hp_kp[0] *= 384 / 96
+    hp_kp[1] *= 384 / 96
+
+    hp_kp[0] *= h_cimg.shape[1] / 384
+    hp_kp[1] *= h_cimg.shape[0] / 384
     hp_kp += h_shift
     
     # KNEE
@@ -104,10 +100,14 @@ def process(image, ml_models):
     
     kp_kps = softargmax_2d(kp_hmps, beta=100.0)
     kp_kps = kp_kps.squeeze().cpu().numpy()
-    kp_kps[:, 0] /= 128/ k_cimg.shape[1]
-    kp_kps[:, 1] /= 128/ k_cimg.shape[0]
-    kp_kps += k_shift
     
+    kp_kps[:, 0] *= 512 / 128
+    kp_kps[:, 1] *= 512 / 128
+
+    kp_kps[:, 0] *= k_cimg.shape[0] / 512
+    kp_kps[:, 1] *= k_cimg.shape[1] / 512
+    kp_kps += k_shift
+
     # ANKLE
     a_img = cv2.resize(a_cimg, (256, 256))
     a_img = torch.from_numpy(a_img).float().unsqueeze(0) / 255.0
@@ -123,8 +123,12 @@ def process(image, ml_models):
     
     ap_kp = softargmax_2d(ap_hmp, beta=100.0)
     ap_kp = ap_kp.squeeze().cpu().numpy()
-    ap_kp[0] /= 64 / a_cimg.shape[1]
-    ap_kp[1] /= 64 / a_cimg.shape[0]
+    
+    ap_kp[0] *= 256 / 64
+    ap_kp[1] *= 256 / 64
+
+    ap_kp[0] *= a_cimg.shape[0] / 256
+    ap_kp[1] *= a_cimg.shape[0] / 256
     ap_kp += a_shift
     
     keys = ["RM1", "RM2", "RSL1", "RSM1", "LTE", "MTE", "LTL", "MTM", "LTC", "MTC", "LTM", "MTL"]
