@@ -19,10 +19,26 @@
 ## How to run juputer lab via docker on the server
 1. Mount external disk with data to /mnt/xray2_disk
 2. Go to /data/igor/projects/2d_landmark
-3. Run docker run --rm -p 8889:8889 --gpus all -v $(pwd):/app -w /app -v /mnt/xray2_disk/dataset:/dataset -d torchlab
+3. Run docker run --rm -p 8889:8889 --gpus all -v $(pwd):/app -w /app -v /mnt/{MOUNTED_DRIVE}/dataset:/dataset -d torchlab
 4. Setup local port forwarding ssh -L 8889:192.168.0.13:8889 gpuadmin@220.76.132.178
 5. Run docker logs <container_id_or_name>
 6. Now you can open juputer lab in web browser
+
+## How to mount external drive to the server
+1. Run lsblk to identify external drive
+```bash
+lsblk
+```
+2. Create a mounting point
+```bash
+sudo mkdir -p /mnt/{FOLDER_NAME}
+```
+3. Mount the drive
+```bash
+sudo mount {DRIVE_NAME} /mnt/{FOLDER_NAME}
+
+Example: sudo mount /dev/sdb1 /mnt/{FOLDER_NAME}
+```
 
 ## Notebooks usage
 
